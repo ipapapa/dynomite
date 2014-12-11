@@ -1,27 +1,42 @@
 #!/bin/bash
+# Script launched by Florida.
+#
+
+# Start redis-server if not running
+if ! (ps -ef | grep -q '[/]apps/nfredis/bin/redis-server'); then
+    (/apps/nfredis/bin/launch_nfredis.sh &)
+fi
+
+# ** This check has to be after the redis check above.
+# Quit if Dynomite is already running, rather than
+# throwing errors from this script.
+if (ps -ef | grep  '[/]apps/dynomite/bin/dynomite'); then
+    logger -s "Dynomite already running, no need to restart it again."
+    exit 0
+fi
 
 DYN_DIR=/apps/dynomite
-LOG_DIR=/logs/system/dynomite
+LOG_DIR=/logs/dynomite
 CONF_DIR=$DYN_DIR/conf
 
-# this code lifted shamelessly from Mike T.'s /etc/init.d/tomcat
-# figure out the appropriate user that we should run by
-typeset -x `stat --printf "userowner=%U\ngroupowner=%G\n" $0`
-mkdir -p $LOG_DIR
-chown -R $userowner:nac  $LOG_DIR
+source /etc/profile.d/netflix_environment.sh
 
-DEBUG_STR="-v0"
+declare -x `stat --printf "userowner=%U\ngroupowner=%G\n" "$0"`
 
-if [ ! -z "$DYN_DEBUG_LEVEL" ] ; then
-   DEBUG_STR="-v$DYN_DEBUG_LEVEL"
+if [ ! -d "$LOG_DIR" ]; then
+    sudo mkdir -p $LOG_DIR
+    sudo chown -R $userowner:$groupowner $LOG_DIR
 fi
 
+#save the previous log
+if [ -e $LOG_DIR/dynomite.log ]; then
+    mv $LOG_DIR/dynomite.log $LOG_DIR/dynomite-$(date +%Y%m%d_%H%M%S).log
+fi
 
 # note that we do not use 'su - username .... ' , because we want to keep the env settings that we have done so far
-cmd="$DYN_DIR/bin/dynomite -c $CONF_DIR/dynomite.yml -d --output=$LOG_DIR/dynomite.log  $DEBUG_STR  > $LOG_DIR/dynomite_start-$(date +%Y%m%d_%H:%M:%S).out 2>&1 &"
-if [ $USER != "root" ];then
-    exec $cmd
-else
-    su  $userowner -c "$cmd"
-fi
+cmd="$DYN_DIR/bin/dynomite -d -c $CONF_DIR/dynomite.yml --output=$LOG_DIR/dynomite.log && sudo /apps/dynomite/bin/core_affinity.sh"
+
+echo "Running command: $cmd"
+
+sudo sh -c "ulimit -c unlimited &&  exec sudo /usr/local/bin/setuidgid $NETFLIX_APPUSER $cmd"
 
