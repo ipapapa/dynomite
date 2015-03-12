@@ -1,0 +1,7 @@
+dyn_o_mite:
+  dyn_listen: 127.0.0.1:8101
+  data_store: 2
+  listen: 127.0.0.1:8102
+  servers:
+  - 127.0.0.1:27017:1
+  tokens: 437425602
