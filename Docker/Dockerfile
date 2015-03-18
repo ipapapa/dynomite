@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
     tcl8.5
 
 # Get Redis Running
-RUN service redis-server start
+RUN service mongodb start
 
 # Clone the Dynomite Git
 RUN git clone https://github.com/Netflix/dynomite.git
