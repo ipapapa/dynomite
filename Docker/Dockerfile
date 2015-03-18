@@ -34,8 +34,7 @@ WORKDIR dynomite/
 # Autoreconf
 RUN autoreconf -fvi \
     && ./configure --enable-debug=log \
-
-    && make
+    && make \
     && make install
 
 ##################### INSTALLATION ENDS #####################
